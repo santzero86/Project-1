@@ -9,7 +9,8 @@ Integrantes:
  - Hugart Andres Estrada Velasco - 2610126
 """
 
-
+import tkinter as tk
+from tkinter import messagebox
 
 import time
 import heapq
@@ -418,11 +419,154 @@ def main():
         print("========================================")
         print("1. Modo Puzzle / Desafío (DFS, BFS, UCS, A*)")
         print("2. Modo Duelo vs Máquina (Minimax Alfa-Beta)")
-        print("3. Salir")
+        print("3. Modo Gráfico vs IA (Minimax Alfa-Beta)")
+        print("4. Salir")
         op = input("Opción: ").strip()
         if op == '1': menu_puzzle()
         elif op == '2': menu_versus()
-        elif op == '3': break
+        elif op == '3': iniciar_gui_duelo()
+        elif op == '4': break
+        
+# ------------------------------------------------------------------------------
+# INTERFAZ GRÁFICA SENCILLA (TKINTER) - MODO DUELO VS MINIMAX
+# ------------------------------------------------------------------------------
 
+class Conecta4GUI:
+    def __init__(self, ventana):
+        self.ventana = ventana
+        self.ventana.title("Conecta 4 - Duelo vs IA (Minimax)")
+        self.ventana.resizable(False, False)
+
+        self.tablero = crear_tablero()
+        self.bloqueado = False  # Para bloquear clics mientras la IA piensa
+
+        self.tam_casilla = 70
+        self.radio = 28
+
+        self._crear_interfaz()
+        self.dibujar_tablero()
+
+    def _crear_interfaz(self):
+        # Frame superior para botones de soltar ficha
+        frame_botones = tk.Frame(self.ventana, bg="#202020", pady=5)
+        frame_botones.pack(fill=tk.X)
+
+        for c in range(COLUMNAS):
+            btn = tk.Button(
+                frame_botones, text=f"Col {c}\n⬇", font=("Arial", 9, "bold"),
+                bg="#404040", fg="white", activebackground="#606060",
+                command=lambda col=c: self.jugada_humano(col),
+                width=6, height=2
+            )
+            btn.pack(side=tk.LEFT, padx=3, expand=True)
+
+        # Lienzo (Canvas) del tablero
+        ancho = COLUMNAS * self.tam_casilla
+        alto = FILAS * self.tam_casilla
+        self.canvas = tk.Canvas(self.ventana, width=ancho, height=alto, bg="#0052cc", highlightthickness=0)
+        self.canvas.pack(padx=10, pady=10)
+
+        # Panel de métricas Minimax
+        frame_info = tk.Frame(self.ventana, bg="#f0f0f0", relief=tk.GROOVE, bd=2)
+        frame_info.pack(fill=tk.X, padx=10, pady=5)
+
+        self.lbl_turno = tk.Label(frame_info, text="Tu turno: Ficha Roja (X)", font=("Arial", 11, "bold"), bg="#f0f0f0")
+        self.lbl_turno.pack(anchor="w", padx=8, pady=2)
+
+        self.lbl_metricas = tk.Label(
+            frame_info, 
+            text="Métricas IA: Esperando jugada inicial...", 
+            font=("Arial", 9), fg="#333", bg="#f0f0f0", justify=tk.LEFT
+        )
+        self.lbl_metricas.pack(anchor="w", padx=8, pady=2)
+
+        # Botón de reinicio
+        btn_reiniciar = tk.Button(self.ventana, text="Reiniciar Partida", font=("Arial", 9), command=self.reiniciar)
+        btn_reiniciar.pack(pady=5)
+
+    def dibujar_tablero(self):
+        self.canvas.delete("all")
+        for r in range(FILAS):
+            for c in range(COLUMNAS):
+                x = c * self.tam_casilla + self.tam_casilla // 2
+                y = r * self.tam_casilla + self.tam_casilla // 2
+                ficha = self.tablero[r][c]
+
+                color = "#ffffff"  # Vacío
+                if ficha == 'X':
+                    color = "#e60000"  # Rojo para humano
+                elif ficha == 'O':
+                    color = "#ffcc00"  # Amarillo para la IA
+
+                self.canvas.create_oval(
+                    x - self.radio, y - self.radio,
+                    x + self.radio, y + self.radio,
+                    fill=color, outline="#002b80", width=2
+                )
+
+    def jugada_humano(self, col):
+        if self.bloqueado:
+            return
+
+        nuevo_tab = soltar_ficha(self.tablero, col, 'X')
+        if nuevo_tab is None:
+            messagebox.showwarning("Movimiento inválido", "¡La columna seleccionada ya está llena!")
+            return
+
+        self.tablero = nuevo_tab
+        self.dibujar_tablero()
+
+        if es_meta(self.tablero, 'X'):
+            self.bloqueado = True
+            messagebox.showinfo("¡Victoria!", "🎉 ¡Felicidades! Has ganado la partida.")
+            return
+
+        if all(self.tablero[0][c] != ' ' for c in range(COLUMNAS)):
+            self.bloqueado = True
+            messagebox.showinfo("Empate", "🤝 ¡El juego ha terminado en empate!")
+            return
+
+        # Turno de la IA
+        self.bloqueado = True
+        self.lbl_turno.config(text="Turno de la IA (Minimax pensando...)")
+        self.ventana.after(100, self.jugada_ia)
+
+    def jugada_ia(self):
+        col_ia, con_poda, sin_poda = mejor_columna_ia(self.tablero, prof=4)
+        self.tablero = soltar_ficha(self.tablero, col_ia, 'O')
+        self.dibujar_tablero()
+
+        ahorro = ((sin_poda - con_poda) / sin_poda * 100) if sin_poda > 0 else 0
+        info_txt = (
+            f"Última jugada IA: Columna {col_ia} | "
+            f"Con poda: {con_poda} nodos | Sin poda: {sin_poda} nodos | Ahorro: {ahorro:.1f}%"
+        )
+        self.lbl_metricas.config(text=info_txt)
+
+        if es_meta(self.tablero, 'O'):
+            self.lbl_turno.config(text="Fin del juego: Ganó la IA")
+            messagebox.showinfo("Derrota", "🤖 La IA (Minimax con Poda) ha ganado.")
+            return
+
+        if all(self.tablero[0][c] != ' ' for c in range(COLUMNAS)):
+            self.lbl_turno.config(text="Fin del juego: Empate")
+            messagebox.showinfo("Empate", "🤝 ¡El juego ha terminado en empate!")
+            return
+
+        self.bloqueado = False
+        self.lbl_turno.config(text="Tu turno: Ficha Roja (X)")
+
+    def reiniciar(self):
+        self.tablero = crear_tablero()
+        self.bloqueado = False
+        self.lbl_turno.config(text="Tu turno: Ficha Roja (X)")
+        self.lbl_metricas.config(text="Métricas IA: Esperando jugada inicial...")
+        self.dibujar_tablero()
+
+def iniciar_gui_duelo():
+    ventana = tk.Tk()
+    app = Conecta4GUI(ventana)
+    ventana.mainloop()
+    
 if __name__ == "__main__":
     main()
