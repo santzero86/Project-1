@@ -23,6 +23,25 @@ C_MIN = 1.0
 def crear_tablero():
     return tuple(tuple(' ' for _ in range(COLUMNAS)) for _ in range(FILAS))
 
+def crear_tablero_puzzle():
+    """
+    Tablero de reto diseñado para diferenciar BFS, UCS y A*:
+    - Columna 3 (Costo 3.0): Necesita 2 fichas para ganar (Costo total = 6.0, Pasos = 2) -> BFS la elige.
+    - Columna 0 (Costo 1.0): Necesita 3 fichas para ganar (Costo total = 3.0, Pasos = 3) -> UCS y A* la eligen.
+    """
+    t = crear_tablero()
+    
+    # Columna 3 (centro, costosa): poner 1 'X' de base y 2 'O'
+    t = soltar_ficha(t, 3, 'X')
+    t = soltar_ficha(t, 3, 'O')
+    t = soltar_ficha(t, 3, 'O')
+    
+    # Columna 0 (barata): poner 1 'X' de base y 1 'O'
+    t = soltar_ficha(t, 0, 'X')
+    t = soltar_ficha(t, 0, 'O')
+    
+    return t
+
 def imprimir_tablero(t):
     print("\n  0   1   2   3   4   5   6")
     print("+---+---+---+---+---+---+---+")
