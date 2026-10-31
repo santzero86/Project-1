@@ -329,13 +329,32 @@ def menu_puzzle():
     if op in algos:
         nom, fn = algos[op]
         cols, costo, exp, t = fn(tab)
+        
+        # Reproducir la secuencia para obtener el tablero final
+        tab_final = tab
+        if cols:
+            for c in cols:
+                tab_final = soltar_ficha(tab_final, c, 'O')
+
         print(f"\n[{nom}] Columnas jugadas: {cols} | Costo total: {costo} | Nodos expandidos: {exp} | Tiempo: {t*1000:.3f} ms")
+        print("\nResultado visual en el tablero:")
+        imprimir_tablero(tab_final)
+
     elif op == '5':
         print(f"\n{'Algoritmo':<10} | {'Jugadas':<12} | {'Costo Total':<12} | {'Nodos Exp.':<10} | {'Tiempo (ms)':<10}")
         print("-" * 65)
         for _, (nom, fn) in algos.items():
             cols, costo, exp, t = fn(tab)
             print(f"{nom:<10} | {str(cols):<12} | {costo:<12.2f} | {exp:<10} | {t*1000:<10.3f}")
+        
+        # Para la comparación global, muestra la solución encontrada por A* o BFS
+        cols_a, _, _, _ = a_estrella(tab)
+        tab_final = tab
+        if cols_a:
+            for c in cols_a:
+                tab_final = soltar_ficha(tab_final, c, 'O')
+        print("\nEstado final alcanzado al resolver el Puzzle:")
+        imprimir_tablero(tab_final)
 
 def menu_versus():
     tab = crear_tablero()
